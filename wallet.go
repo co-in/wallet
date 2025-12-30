@@ -183,7 +183,23 @@ func (m *Wallet) Backup(password string) ([]string, error) {
 	return mnemonic, nil
 }
 
-func (m *Wallet) NextPrivate(kind uint32) ([]byte, error) {
+func (m *Wallet) SecretByPath(path ...uint32) ([]byte, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.isLocked() {
+		return nil, ErrWalletIsLocked
+	}
+
+	sk, err := m.dk.Jump(path[:]...)
+	if err != nil {
+		return nil, fmt.Errorf("jump dk: %w", err)
+	}
+
+	return sk, nil
+}
+
+func (m *Wallet) NextSecret(kind uint32) ([]byte, error) {
 	if kind == 0 {
 		return nil, errors.New("invalid kind")
 	}

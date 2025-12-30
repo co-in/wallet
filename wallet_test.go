@@ -124,14 +124,18 @@ func Test4(t *testing.T) {
 	err := w.Unlock(password)
 	require.NoError(t, err)
 
-	sk, err := w.NextPrivate(wallet.PathKindExpense)
+	sk1, err := w.NextPrivate(wallet.PathKindExpense)
 	require.NoError(t, err)
-	require.NotNil(t, sk)
+	require.NotNil(t, sk1)
+	sk2, err := w.NextPrivate(wallet.PathKindExpense)
+	require.NoError(t, err)
+	require.NotNil(t, sk2)
+	require.NotEqual(t, sk1, sk2)
 
 	err = w.Lock()
 	require.NoError(t, err)
 
-	sk, err = w.NextPrivate(wallet.PathKindExpense)
+	sk, err := w.NextPrivate(wallet.PathKindExpense)
 	require.ErrorIs(t, wallet.ErrWalletIsLocked, err)
 	require.Nil(t, sk)
 }
