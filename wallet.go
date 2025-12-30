@@ -50,6 +50,24 @@ func WithMnemonicLen(value int) Option {
 	}
 }
 
+func WithDictionary(value prkg.Dictionary) Option {
+	return func(m *Wallet) {
+		m.dict = value
+	}
+}
+
+func WithHRAddress(value *hr32.Config) Option {
+	return func(m *Wallet) {
+		m.addr = value
+	}
+}
+
+func WithHRSecret(value *hr32.Config) Option {
+	return func(m *Wallet) {
+		m.sec = value
+	}
+}
+
 func NewWallet(database storage.Database, options ...Option) (*Wallet, error) {
 	hrAddr, err := hr32.Default.Clone(
 		hr32.WithPrefix("addr"),
@@ -69,10 +87,9 @@ func NewWallet(database storage.Database, options ...Option) (*Wallet, error) {
 		db: database,
 
 		mnemonicLen: 24,
-
-		dict: prkg.DictEnglish,
-		addr: hrAddr,
-		sec:  hrSec,
+		dict:        prkg.DictEnglish,
+		addr:        hrAddr,
+		sec:         hrSec,
 	}
 
 	for _, option := range options {
@@ -280,27 +297,6 @@ func (m *Wallet) Close() {
 	m.db.Close()
 }
 
-func (m *Wallet) isLocked() bool {
-	return m.dk == nil
-}
-
-func (m *Wallet) isProtected() bool {
-	return m.passHash != nil
-}
-
-func (m *Wallet) isEmpty() bool {
-	return m.encEntropy == nil
-}
-
-func (m *Wallet) genRawEntropy() (err error) {
-	m.rawEntropy, err = prkg.EntropyFromSize(m.mnemonicLen)
-	if err != nil {
-		return fmt.Errorf("new entropy: %w", err)
-	}
-
-	return nil
-}
-
 var regExpPassStrength = regexp.MustCompile(`^.{8,64}$`) //SP-800-63-4
 func (m *Wallet) getEntropy(password string) (entropy []byte, err error) {
 	if !regExpPassStrength.MatchString(password) {
@@ -360,4 +356,25 @@ func (m *Wallet) getEntropy(password string) (entropy []byte, err error) {
 	}
 
 	return entropy, nil
+}
+
+func (m *Wallet) isLocked() bool {
+	return m.dk == nil
+}
+
+func (m *Wallet) isProtected() bool {
+	return m.passHash != nil
+}
+
+func (m *Wallet) isEmpty() bool {
+	return m.encEntropy == nil
+}
+
+func (m *Wallet) genRawEntropy() (err error) {
+	m.rawEntropy, err = prkg.EntropyFromSize(m.mnemonicLen)
+	if err != nil {
+		return fmt.Errorf("new entropy: %w", err)
+	}
+
+	return nil
 }
