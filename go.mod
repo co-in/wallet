@@ -10,7 +10,6 @@ replace (
 )
 
 require (
-	github.com/co-in/hr32 v1.0.0
 	github.com/co-in/prkg v1.0.0
 	github.com/co-in/storage v0.0.0-20251227173256-b58a9e9909f4
 	github.com/co-in/storage/badger v0.0.0-00010101000000-000000000000

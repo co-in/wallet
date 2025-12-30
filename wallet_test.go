@@ -32,8 +32,8 @@ func newDB(t *testing.T) (storage.Database, func()) {
 	return db, db.Close
 }
 
-func newWallet(t *testing.T, db storage.Database, options ...wallet.Option) (*wallet.Wallet, func()) {
-	w, err := wallet.NewWallet(db, 65248, options...)
+func newWallet(t *testing.T, db storage.Database, options ...wallet.Option) (*wallet.Keystore, func()) {
+	w, err := wallet.NewKeystore(db, 65248, options...)
 	require.NoError(t, err)
 	require.NotNil(t, w)
 

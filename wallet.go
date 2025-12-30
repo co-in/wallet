@@ -14,7 +14,12 @@ import (
 	"github.com/co-in/storage"
 )
 
-type Wallet struct {
+const (
+	KindAddress uint32 = 1
+	KindPublic  uint32 = 2
+)
+
+type Keystore struct {
 	db storage.Database
 
 	mnemonicLen int
@@ -35,29 +40,30 @@ type Wallet struct {
 /*
 	- WithMnemonicLen
 	- WithDictionary
+	- WithWalletID
 */
-type Option func(*Wallet)
+type Option func(*Keystore)
 
 func WithMnemonicLen(value int) Option {
-	return func(m *Wallet) {
+	return func(m *Keystore) {
 		m.mnemonicLen = value
 	}
 }
 
 func WithDictionary(value prkg.Dictionary) Option {
-	return func(m *Wallet) {
+	return func(m *Keystore) {
 		m.dict = value
 	}
 }
 
 func WithWalletID(value uint32) Option {
-	return func(m *Wallet) {
+	return func(m *Keystore) {
 		m.walletID = value
 	}
 }
 
-func NewWallet(database storage.Database, coinID uint32, options ...Option) (*Wallet, error) {
-	m := &Wallet{
+func NewKeystore(database storage.Database, coinID uint32, options ...Option) (*Keystore, error) {
+	m := &Keystore{
 		db:          database,
 		mnemonicLen: 24,
 		dict:        prkg.DictEnglish,
@@ -110,7 +116,24 @@ func NewWallet(database storage.Database, coinID uint32, options ...Option) (*Wa
 	return m, nil
 }
 
-func (m *Wallet) Restore(words []string) (err error) {
+func (m *Keystore) Link(kind uint32, key []byte, path string) error {
+	var prefix []byte
+
+	switch kind {
+	case KindAddress:
+		prefix = []byte("a/")
+	case KindPublic:
+		prefix = []byte("p/")
+	default:
+		return errors.New("unknown kind")
+	}
+
+	return m.db.Update(func(tx storage.Transaction) error {
+		return tx.Set(append(prefix, key...), []byte(path))
+	})
+}
+
+func (m *Keystore) Restore(words []string) (err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -122,7 +145,7 @@ func (m *Wallet) Restore(words []string) (err error) {
 	return nil
 }
 
-func (m *Wallet) Unlock(password string) error {
+func (m *Keystore) Unlock(password string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -148,7 +171,7 @@ func (m *Wallet) Unlock(password string) error {
 	return nil
 }
 
-func (m *Wallet) Lock() error {
+func (m *Keystore) Lock() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -157,7 +180,7 @@ func (m *Wallet) Lock() error {
 	return nil
 }
 
-func (m *Wallet) Backup(password string) ([]string, error) {
+func (m *Keystore) Backup(password string) ([]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -174,7 +197,7 @@ func (m *Wallet) Backup(password string) ([]string, error) {
 	return mnemonic, nil
 }
 
-func (m *Wallet) SecretByPath(path ...uint32) ([]byte, error) {
+func (m *Keystore) SecretByPath(path ...uint32) ([]byte, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -190,7 +213,7 @@ func (m *Wallet) SecretByPath(path ...uint32) ([]byte, error) {
 	return sk, nil
 }
 
-func (m *Wallet) NextSecret(kind uint32) ([]byte, error) {
+func (m *Keystore) NextSecret(kind uint32) ([]byte, error) {
 	if kind == 0 {
 		return nil, errors.New("invalid kind")
 	}
@@ -246,33 +269,33 @@ func (m *Wallet) NextSecret(kind uint32) ([]byte, error) {
 	return sk, nil
 }
 
-func (m *Wallet) IsProtected() bool {
+func (m *Keystore) IsProtected() bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	return m.isProtected()
 }
 
-func (m *Wallet) IsEmpty() bool {
+func (m *Keystore) IsEmpty() bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	return m.isEmpty()
 }
 
-func (m *Wallet) IsLocked() bool {
+func (m *Keystore) IsLocked() bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	return m.isLocked()
 }
 
-func (m *Wallet) Close() {
+func (m *Keystore) Close() {
 	m.db.Close()
 }
 
 var regExpPassStrength = regexp.MustCompile(`^.{8,64}$`) //SP-800-63-4
-func (m *Wallet) getEntropy(password string) (entropy []byte, err error) {
+func (m *Keystore) getEntropy(password string) (entropy []byte, err error) {
 	if !regExpPassStrength.MatchString(password) {
 		return nil, errors.New("weak password [8-64] symbols required")
 	}
@@ -332,19 +355,19 @@ func (m *Wallet) getEntropy(password string) (entropy []byte, err error) {
 	return entropy, nil
 }
 
-func (m *Wallet) isLocked() bool {
+func (m *Keystore) isLocked() bool {
 	return m.dk == nil
 }
 
-func (m *Wallet) isProtected() bool {
+func (m *Keystore) isProtected() bool {
 	return m.passHash != nil
 }
 
-func (m *Wallet) isEmpty() bool {
+func (m *Keystore) isEmpty() bool {
 	return m.encEntropy == nil
 }
 
-func (m *Wallet) genRawEntropy() (err error) {
+func (m *Keystore) genRawEntropy() (err error) {
 	m.rawEntropy, err = prkg.EntropyFromSize(m.mnemonicLen)
 	if err != nil {
 		return fmt.Errorf("new entropy: %w", err)

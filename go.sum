@@ -1,7 +1,5 @@
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/co-in/hr32 v1.0.0 h1:EnF7hUfoL2yHRdA8lwv6QIOCTZ5peD1bbnum+uujuGw=
-github.com/co-in/hr32 v1.0.0/go.mod h1:+lmU2LC+kWq5wOdPWQ4BlEGYRL+F0SkPahDF7CIssv4=
 github.com/co-in/prkg v1.0.0 h1:zmGIu1uCAB5rJDNa/JXuNkRjWczMY61r6m/7ef4EVXk=
 github.com/co-in/prkg v1.0.0/go.mod h1:u0+mksF42vqwvrCWamsk0IAg5DMvNx7PJyikEJ8UCdk=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
