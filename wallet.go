@@ -10,26 +10,12 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/co-in/hr32"
 	"github.com/co-in/prkg"
 	"github.com/co-in/storage"
 )
 
-const (
-	PathCoin   = 65248
-	PathWallet = 1
-
-	PathKindExpense = 1
-	PathKindChange  = 2
-	PathKindQuorum  = 3
-
-	PathCount = 0
-)
-
 type Wallet struct {
-	db   storage.Database
-	sec  *hr32.Config
-	addr *hr32.Config
+	db storage.Database
 
 	mnemonicLen int
 	rawEntropy  []byte
@@ -38,10 +24,18 @@ type Wallet struct {
 	salt        []byte
 	dk          *prkg.DK
 
+	coinID   uint32
+	walletID uint32
+
 	dict prkg.Dictionary
 	mu   sync.Mutex
 }
 
+// Option
+/*
+	- WithMnemonicLen
+	- WithDictionary
+*/
 type Option func(*Wallet)
 
 func WithMnemonicLen(value int) Option {
@@ -56,40 +50,19 @@ func WithDictionary(value prkg.Dictionary) Option {
 	}
 }
 
-func WithHRAddress(value *hr32.Config) Option {
+func WithWalletID(value uint32) Option {
 	return func(m *Wallet) {
-		m.addr = value
+		m.walletID = value
 	}
 }
 
-func WithHRSecret(value *hr32.Config) Option {
-	return func(m *Wallet) {
-		m.sec = value
-	}
-}
-
-func NewWallet(database storage.Database, options ...Option) (*Wallet, error) {
-	hrAddr, err := hr32.Default.Clone(
-		hr32.WithPrefix("addr"),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("hr32 addr: %w", err)
-	}
-
-	hrSec, err := hr32.Default.Clone(
-		hr32.WithPrefix("sec"),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("hr32 sec: %w", err)
-	}
-
+func NewWallet(database storage.Database, coinID uint32, options ...Option) (*Wallet, error) {
 	m := &Wallet{
-		db: database,
-
+		db:          database,
 		mnemonicLen: 24,
 		dict:        prkg.DictEnglish,
-		addr:        hrAddr,
-		sec:         hrSec,
+		coinID:      coinID,
+		walletID:    1,
 	}
 
 	for _, option := range options {
@@ -100,7 +73,9 @@ func NewWallet(database storage.Database, options ...Option) (*Wallet, error) {
 	defer m.mu.Unlock()
 
 	//read from the file
-	if err = m.db.View(func(tx storage.TransactionRead) error {
+	if err := m.db.View(func(tx storage.TransactionRead) error {
+		var err error
+
 		if m.salt, err = tx.Get(keySalt.Bytes()); err != nil && !errors.As(err, &storage.ErrKeyNotFound{}) {
 			return fmt.Errorf("get salt: %w", err)
 		}
@@ -120,15 +95,14 @@ func NewWallet(database storage.Database, options ...Option) (*Wallet, error) {
 
 	if m.salt == nil {
 		m.salt = make([]byte, 32)
-		_, err = rand.Read(m.salt)
-		if err != nil {
+
+		if _, err := rand.Read(m.salt); err != nil {
 			return nil, fmt.Errorf("gen salt: %w", err)
 		}
 
-		err = m.db.Update(func(tx storage.Transaction) error {
+		if err := m.db.Update(func(tx storage.Transaction) error {
 			return tx.Set(keySalt.Bytes(), m.salt)
-		})
-		if err != nil {
+		}); err != nil {
 			return nil, fmt.Errorf("save salt: %w", err)
 		}
 	}
@@ -229,7 +203,7 @@ func (m *Wallet) NextSecret(kind uint32) ([]byte, error) {
 	}
 
 	var sk []byte
-	path := prkg.NewPath(PathCoin, PathWallet, kind, 0)
+	path := prkg.NewPath(m.coinID, m.walletID, kind, 0)
 	keysCountKey := []byte(path.String())
 	err := m.db.Update(func(tx storage.Transaction) error {
 		//get keys count raw

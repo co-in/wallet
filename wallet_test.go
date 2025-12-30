@@ -16,6 +16,7 @@ var (
 		"flat trigger ghost disorder enroll kid brief provide pave whisper off"
 	mnemonicRes = strings.Split(mnemonicRaw, " ")
 	password    = "password"
+	kindExpense = uint32(1)
 )
 
 func newDB(t *testing.T) (storage.Database, func()) {
@@ -32,7 +33,7 @@ func newDB(t *testing.T) (storage.Database, func()) {
 }
 
 func newWallet(t *testing.T, db storage.Database, options ...wallet.Option) (*wallet.Wallet, func()) {
-	w, err := wallet.NewWallet(db, options...)
+	w, err := wallet.NewWallet(db, 65248, options...)
 	require.NoError(t, err)
 	require.NotNil(t, w)
 
@@ -42,7 +43,7 @@ func newWallet(t *testing.T, db storage.Database, options ...wallet.Option) (*wa
 func Test1(t *testing.T) {
 	db, dbC := newDB(t)
 	defer dbC()
-	w, wC := newWallet(t, db)
+	w, wC := newWallet(t, db, wallet.WithWalletID(2))
 	defer wC()
 
 	require.True(t, w.IsLocked())
@@ -124,10 +125,10 @@ func Test4(t *testing.T) {
 	err := w.Unlock(password)
 	require.NoError(t, err)
 
-	sk1, err := w.NextPrivate(wallet.PathKindExpense)
+	sk1, err := w.NextSecret(kindExpense)
 	require.NoError(t, err)
 	require.NotNil(t, sk1)
-	sk2, err := w.NextPrivate(wallet.PathKindExpense)
+	sk2, err := w.NextSecret(kindExpense)
 	require.NoError(t, err)
 	require.NotNil(t, sk2)
 	require.NotEqual(t, sk1, sk2)
@@ -135,7 +136,7 @@ func Test4(t *testing.T) {
 	err = w.Lock()
 	require.NoError(t, err)
 
-	sk, err := w.NextPrivate(wallet.PathKindExpense)
+	sk, err := w.NextSecret(kindExpense)
 	require.ErrorIs(t, wallet.ErrWalletIsLocked, err)
 	require.Nil(t, sk)
 }
